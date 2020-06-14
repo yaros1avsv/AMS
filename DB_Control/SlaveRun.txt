@@ -1,0 +1,10 @@
+#!/bin/bash
+while :
+do
+	if ping MASTER -c 1 | grep -q '100% packet loss' && \
+		curl -X GET ARBITER | grep -q 'REVOLUTION'
+	then
+		pg_ctlcluster 9.6 main promote
+	fi
+	sleep 5
+done

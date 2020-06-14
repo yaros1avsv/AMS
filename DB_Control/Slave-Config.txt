@@ -1,0 +1,28 @@
+#!/bin/bash
+
+apt-get update
+apt-get install -y gnupg curl
+
+echo 'deb http://apt.postgresql.org/pub/repos/apt/ buster-pgdg main' >> /etc/apt/sources.list
+wget --quiet -O - http://apt.postgresql.org/pub/repos/apt/ACCC4CF8.asc | apt-key add -
+apt-get update
+apt-get install -y postgresql-9.6
+systemctl enable postgresql
+
+systemctl stop postgresql
+rm -rf /var/lib/postgresql/9.6/main/
+su postgres
+echo 'MASTER:5432:postgres:postgres:1111' >> ~/.pgpass
+chmod 0600 ~/.pgpass
+pg_basebackup -h MASTER -U replica_user -D /var/lib/postgresql/9.6/main -P --xlog -p 5432
+exit
+
+sed -i 's/#hot_standby = off/hot_standby = on/' /etc/postgresql/9.6/main/postgresql.conf
+sed -i 's/#listen_addresses = '"'"'localhost'"'"'/listen_addresses = '"'"'*'"'"'/' /etc/postgresql/9.6/main/postgresql.conf
+
+echo 'standby_mode = '"'"'on'"'"'' >> /var/lib/postgresql/9.6/main/recovery.conf
+echo "primary_conninfo = 'host=MASTER port=5432 user=replica_user password=1111 application_name=postgresnode1'" >> /var/lib/postgresql/9.6/main/recovery.conf
+
+echo 'trigger_file = '"'"'/tmp/postgresql.trigger.5432'"'"'' >> /var/lib/postgresql/9.6/main/recovery.conf
+chown postgres:postgres /var/lib/postgresql/9.6/main/recovery.conf
+systemctl start postgresql

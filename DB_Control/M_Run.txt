@@ -1,0 +1,11 @@
+#!/bin/bash
+sleep 5
+ifdown ens33
+sleep 120
+ifup ens33
+if curl -X GET ARBITER | grep -q 'REVOLUTION' # if revolution happened
+then
+	su postgres
+	/usr/lib/postgresql/9.6/bin/pg_ctl stop -D /var/lib/postgresql/9.6/main
+	exit
+fi
