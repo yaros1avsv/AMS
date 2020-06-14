@@ -1,0 +1,12 @@
+#!/bin/bash
+
+apt-get update
+apt-get install -y nginx
+systemctl enable nginx
+if [ -f /var/www/html/index.nginx-debian.html_backup ]
+then
+	echo 'Copy of index HTML file is already there'
+else
+	cp /var/www/html/index.nginx-debian.html /var/www/html/index.nginx-debian.html_backup
+fi
+echo 'OK' > /var/www/html/index.nginx-debian.html
