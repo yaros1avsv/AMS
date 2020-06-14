@@ -1,0 +1,34 @@
+#!/bin/bash
+
+apt-get update
+apt-get install -y gnupg
+
+echo 'deb http://apt.postgresql.org/pub/repos/apt/ buster-pgdg main' >> /etc/apt/sources.list
+wget --quiet -O - http://apt.postgresql.org/pub/repos/apt/ACCC4CF8.asc | apt-key add -
+apt-get update
+apt-get install -y postgresql-9.6
+systemctl start postgresql
+systemctl enable postgresql
+
+
+sed -i 's/#listen_addresses = '"'"'localhost'"'"'/listen_addresses = '"'"'*'"'"'/' /etc/postgresql/9.6/main/postgresql.conf
+sed -i 's/#wal_level = minimal/wal_level = replica/' /etc/postgresql/9.6/main/postgresql.conf
+sed -i 's/#synchronous_commit = on/synchronous_commit = local/' /etc/postgresql/9.6/main/postgresql.conf
+sed -i 's/#archive_mode = off/archive_mode = on/' /etc/postgresql/9.6/main/postgresql.conf
+sed -i 's/#archive_command = '"'"''"'"'/archive_command = '"'"'cp %p \/var\/lib\/postgresql\/9.6\/archive\/%f'"'"'/' /etc/postgresql/9.6/main/postgresql.conf
+sed -i 's/#max_wal_senders = 0/max_wal_senders = 2/' /etc/postgresql/9.6/main/postgresql.conf
+sed -i 's/#wal_keep_segments = 0/wal_keep_segments = 12/' /etc/postgresql/9.6/main/postgresql.conf
+sed -i 's/#synchronous_standby_names = '"'"''"'"'/synchronous_standby_names = '"'"'postgresnode1'"'"'/' /etc/postgresql/9.6/main/postgresql.conf
+
+mkdir -p /var/lib/postgresql/9.6/archive
+chmod 700 /var/lib/postgresql/9.6/archive/
+chown -R postgres:postgres /var/lib/postgresql/9.6/archive/
+
+echo "host replication replica_user   127.0.0.1/32                    md5" >> /etc/postgresql/9.6/main/pg_hba.conf
+echo "host replication replica_user   MASTER                   md5" >> /etc/postgresql/9.6/main/pg_hba.conf
+echo "host replication replica_user   SLAVE                   md5" >> /etc/postgresql/9.6/main/pg_hba.conf
+
+systemctl restart postgresql
+su postgres
+psql -c 'CREATE USER replica_user ENCRYPTED PASSWORD '"'"'1111'"'"' REPLICATION;'
+exit
